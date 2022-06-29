@@ -1,91 +1,46 @@
 package wary.bhaskar.speech_to_text
 
+import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.provider.Settings
-import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.view.MotionEvent
-import android.view.View
-import android.widget.EditText
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
+    private val RQ_SPEECH_REC = 102
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        checkPermission()
-
-        startSpeechToText()
+        btn_button.setOnClickListener {
+            askSpeechInput()
+        }
     }
 
-    private fun startSpeechToText() {
-        val editText = findViewById<EditText>(R.id.editText)
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
 
-        val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-        val speechRecognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-
-        speechRecognizer.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(bundle: Bundle) {}
-
-            override fun onBeginningOfSpeech() {}
-
-            override fun onRmsChanged(v: Float) {}
-
-            override fun onBufferReceived(bytes: ByteArray) {}
-
-            override fun onEndOfSpeech() {}
-
-            override fun onError(i: Int) {}
-
-            override fun onResults(bundle: Bundle) {
-                val matches = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)//getting all the matches
-                //displaying the first match
-                if (matches != null)
-                    editText.setText(matches[0])
-            }
-
-            override fun onPartialResults(bundle: Bundle) {}
-
-            override fun onEvent(i: Int, bundle: Bundle) {}
-        })
-
-        btSpeech.setOnTouchListener(View.OnTouchListener { view, motionEvent ->
-            when (motionEvent.action) {
-                MotionEvent.ACTION_UP -> {
-                    speechRecognizer.stopListening()
-                    editText.hint = getString(R.string.text_hint)
-                }
-
-                MotionEvent.ACTION_DOWN -> {
-                    speechRecognizer.startListening(speechRecognizerIntent)
-                    editText.setText("")
-                    editText.hint = "Listening..."
-                }
-            }
-            false
-        })
+        if (requestCode == RQ_SPEECH_REC && resultCode == Activity.RESULT_OK) {
+            val result : ArrayList<String>? = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            tv_text.text = result?.get((0)).toString()
+        }
     }
 
-    private fun checkPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName))
-                startActivity(intent)
-                finish()
-                Toast.makeText(this, "Enable Microphone Permission..!!", Toast.LENGTH_SHORT).show()
-            }
+    private fun askSpeechInput() {
+        if(!SpeechRecognizer.isRecognitionAvailable(this)) {
+            Toast .makeText(this, "Speech recognition is not available", Toast.LENGTH_SHORT).show()
+        } else {
+            val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            i.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say something!")
+            startActivityForResult(i,RQ_SPEECH_REC)
         }
     }
 }
